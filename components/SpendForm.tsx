@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type PrimaryUseCase = "coding" | "writing" | "data" | "research" | "mixed";
@@ -216,6 +217,7 @@ const apiUsageLabels: Record<ApiUsage, string> = {
 };
 
 export default function SpendForm() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [showValidation, setShowValidation] = useState(false);
   const [formState, setFormState] =
@@ -446,6 +448,8 @@ export default function SpendForm() {
         "ai-spend-auditor-latest-result",
         JSON.stringify(data.auditResult),
       );
+
+      router.push("/audit/result");
 
     } catch (error) {
       const message =
