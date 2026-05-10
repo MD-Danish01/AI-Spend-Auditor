@@ -442,14 +442,7 @@ export default function SpendForm() {
         throw new Error(data.error || "Failed to generate audit");
       }
 
-      console.log("Audit result:", data.auditResult);
-
-      localStorage.setItem(
-        "ai-spend-auditor-latest-result",
-        JSON.stringify(data.auditResult),
-      );
-
-      router.push("/audit/result");
+      router.push(data.redirectUrl);
 
     } catch (error) {
       const message =
