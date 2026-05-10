@@ -103,3 +103,8 @@ flowchart TD
 
     O --> S[Shareable Public Audit URL]
     S --> T[Public Audit Page without Email or Company Details]
+```
+## plan and pricing data source
+
+For API-direct tools, the product asks for actual monthly spend instead of token-level usage. This is intentional because most founders and engineering managers know their monthly invoice amount, but not exact model-level token usage. Official token pricing is still cited in PRICING_DATA.md as reference data, but the audit engine uses user-provided monthly API spend for recommendations.
+
