@@ -61,7 +61,11 @@ const subscriptionTools: SubscriptionToolName[] = [
   "v0",
 ];
 
-const apiProviders: ApiProvider[] = ["OpenAI API", "Anthropic API", "Gemini API"];
+const apiProviders: ApiProvider[] = [
+  "OpenAI API",
+  "Anthropic API",
+  "Gemini API",
+];
 
 const plansByTool: Record<SubscriptionToolName, string[]> = {
   Cursor: ["Hobby", "Pro", "Pro+", "Ultra", "Teams", "Enterprise"],
@@ -134,29 +138,32 @@ function parseStoredFormState(raw: string | null): AuditFormState {
   try {
     const parsed = JSON.parse(raw) as Partial<AuditFormState>;
     const parsedTools: ToolSpendInput[] = Array.isArray(parsed.tools)
-      ? parsed.tools.map((tool): ToolSpendInput => ({
-          id: typeof tool.id === "string" ? tool.id : createId(),
-          type: tool.type === "api" ? "api" : "subscription",
-          toolName: typeof tool.toolName === "string" ? tool.toolName : "",
-          plan: typeof tool.plan === "string" ? tool.plan : "",
-          seats:
-            typeof tool.seats === "number" && Number.isFinite(tool.seats)
-              ? tool.seats
-              : 1,
-          monthlySpend:
-            typeof tool.monthlySpend === "number" && Number.isFinite(tool.monthlySpend)
-              ? tool.monthlySpend
-              : 0,
-          apiUsage:
-            tool.apiUsage === "product_features" ||
-            tool.apiUsage === "internal_tools" ||
-            tool.apiUsage === "experiments" ||
-            tool.apiUsage === "customer_support" ||
-            tool.apiUsage === "mixed"
-              ? tool.apiUsage
-              : undefined,
-          mainModel: typeof tool.mainModel === "string" ? tool.mainModel : "",
-        }))
+      ? parsed.tools.map(
+          (tool): ToolSpendInput => ({
+            id: typeof tool.id === "string" ? tool.id : createId(),
+            type: tool.type === "api" ? "api" : "subscription",
+            toolName: typeof tool.toolName === "string" ? tool.toolName : "",
+            plan: typeof tool.plan === "string" ? tool.plan : "",
+            seats:
+              typeof tool.seats === "number" && Number.isFinite(tool.seats)
+                ? tool.seats
+                : 1,
+            monthlySpend:
+              typeof tool.monthlySpend === "number" &&
+              Number.isFinite(tool.monthlySpend)
+                ? tool.monthlySpend
+                : 0,
+            apiUsage:
+              tool.apiUsage === "product_features" ||
+              tool.apiUsage === "internal_tools" ||
+              tool.apiUsage === "experiments" ||
+              tool.apiUsage === "customer_support" ||
+              tool.apiUsage === "mixed"
+                ? tool.apiUsage
+                : undefined,
+            mainModel: typeof tool.mainModel === "string" ? tool.mainModel : "",
+          }),
+        )
       : [];
 
     return {
@@ -211,8 +218,11 @@ const apiUsageLabels: Record<ApiUsage, string> = {
 export default function SpendForm() {
   const [step, setStep] = useState<Step>(1);
   const [showValidation, setShowValidation] = useState(false);
-  const [formState, setFormState] = useState<AuditFormState>(getInitialFormState);
+  const [formState, setFormState] =
+    useState<AuditFormState>(getInitialFormState);
   const hasHydratedRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -236,7 +246,7 @@ export default function SpendForm() {
         const value = Number(tool.monthlySpend);
         return sum + (Number.isFinite(value) ? Math.max(0, value) : 0);
       }, 0),
-    [formState.tools]
+    [formState.tools],
   );
 
   const totalMonthlySpend =
@@ -279,7 +289,8 @@ export default function SpendForm() {
   });
 
   const step2Valid =
-    formState.tools.length > 0 && toolErrors.every((errors) => errors.length === 0);
+    formState.tools.length > 0 &&
+    toolErrors.every((errors) => errors.length === 0);
 
   function goNext() {
     if (step === 1) {
@@ -307,14 +318,19 @@ export default function SpendForm() {
     setStep((prev) => (prev > 1 ? ((prev - 1) as Step) : prev));
   }
 
-  function updateState<K extends keyof AuditFormState>(key: K, value: AuditFormState[K]) {
+  function updateState<K extends keyof AuditFormState>(
+    key: K,
+    value: AuditFormState[K],
+  ) {
     setFormState((prev) => ({ ...prev, [key]: value }));
   }
 
   function updateTool(toolId: string, patch: Partial<ToolSpendInput>) {
     setFormState((prev) => ({
       ...prev,
-      tools: prev.tools.map((tool) => (tool.id === toolId ? { ...tool, ...patch } : tool)),
+      tools: prev.tools.map((tool) =>
+        tool.id === toolId ? { ...tool, ...patch } : tool,
+      ),
     }));
   }
 
@@ -330,7 +346,9 @@ export default function SpendForm() {
           return {
             ...tool,
             type,
-            toolName: subscriptionTools.includes(tool.toolName as SubscriptionToolName)
+            toolName: subscriptionTools.includes(
+              tool.toolName as SubscriptionToolName,
+            )
               ? tool.toolName
               : "",
             plan: "",
@@ -343,7 +361,9 @@ export default function SpendForm() {
         return {
           ...tool,
           type,
-          toolName: apiProviders.includes(tool.toolName as ApiProvider) ? tool.toolName : "",
+          toolName: apiProviders.includes(tool.toolName as ApiProvider)
+            ? tool.toolName
+            : "",
           plan: undefined,
           seats: undefined,
           apiUsage: undefined,
@@ -363,7 +383,10 @@ export default function SpendForm() {
   function removeTool(toolId: string) {
     setFormState((prev) => ({
       ...prev,
-      tools: prev.tools.length > 1 ? prev.tools.filter((tool) => tool.id !== toolId) : prev.tools,
+      tools:
+        prev.tools.length > 1
+          ? prev.tools.filter((tool) => tool.id !== toolId)
+          : prev.tools,
     }));
   }
 
@@ -379,14 +402,9 @@ export default function SpendForm() {
     setShowValidation(false);
   }
 
-  function generateAudit() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(formState));
-    console.log(formState);
-    alert("Audit generation will be connected next.");
-  }
-
   const teamSizeError =
-    showValidation && (!Number.isFinite(formState.teamSize) || formState.teamSize < 1)
+    showValidation &&
+    (!Number.isFinite(formState.teamSize) || formState.teamSize < 1)
       ? "Team size is required and must be at least 1."
       : "";
 
@@ -401,11 +419,52 @@ export default function SpendForm() {
     { number: 3 as Step, label: "Review" },
   ];
 
+  async function handleGenerateAudit() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formState));
+
+      setIsSubmitting(true);
+      setSubmitError("");
+
+      const response = await fetch("/api/audits", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formState),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to generate audit");
+      }
+
+      console.log("Audit result:", data.auditResult);
+
+      localStorage.setItem(
+        "ai-spend-auditor-latest-result",
+        JSON.stringify(data.auditResult),
+      );
+
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to generate audit.";
+
+      setSubmitError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-          <ol className="flex flex-wrap items-center gap-3" aria-label="Form steps">
+          <ol
+            className="flex flex-wrap items-center gap-3"
+            aria-label="Form steps"
+          >
             {stepConfig.map((item) => {
               const isActive = step === item.number;
               const isCompleted = step > item.number;
@@ -427,7 +486,9 @@ export default function SpendForm() {
                   <span
                     className={[
                       "text-sm font-medium",
-                      isCompleted || isActive ? "text-slate-900" : "text-slate-500",
+                      isCompleted || isActive
+                        ? "text-slate-900"
+                        : "text-slate-500",
                     ].join(" ")}
                   >
                     {item.label}
@@ -449,14 +510,19 @@ export default function SpendForm() {
         {step === 1 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Team context</h2>
+              <h2 className="text-xl font-semibold text-slate-900">
+                Team context
+              </h2>
               <p className="mt-1 text-sm text-slate-600">
                 Tell us about your team and usage context.
               </p>
             </div>
 
             <div>
-              <label htmlFor="team-size" className="block text-sm font-medium text-slate-900">
+              <label
+                htmlFor="team-size"
+                className="block text-sm font-medium text-slate-900"
+              >
                 Team size
               </label>
               <input
@@ -465,7 +531,10 @@ export default function SpendForm() {
                 min={1}
                 value={formState.teamSize || ""}
                 onChange={(e) =>
-                  updateState("teamSize", e.target.value === "" ? 0 : Number(e.target.value))
+                  updateState(
+                    "teamSize",
+                    e.target.value === "" ? 0 : Number(e.target.value),
+                  )
                 }
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base text-slate-900 outline-none ring-cyan-500 transition focus:border-cyan-400 focus:ring-2"
                 placeholder="e.g. 14"
@@ -473,7 +542,9 @@ export default function SpendForm() {
               <p className="mt-1 text-xs text-slate-500">
                 How many people actively use AI tools?
               </p>
-              {teamSizeError && <p className="mt-2 text-sm text-rose-600">{teamSizeError}</p>}
+              {teamSizeError && (
+                <p className="mt-2 text-sm text-rose-600">{teamSizeError}</p>
+              )}
             </div>
 
             <fieldset>
@@ -499,15 +570,21 @@ export default function SpendForm() {
                         name="primary-use-case"
                         value={option.value}
                         checked={selected}
-                        onChange={() => updateState("primaryUseCase", option.value)}
+                        onChange={() =>
+                          updateState("primaryUseCase", option.value)
+                        }
                         className="mt-0.5 h-4 w-4 border-slate-300 text-cyan-600 focus:ring-cyan-500"
                       />
-                      <span className="text-sm font-medium text-slate-800">{option.label}</span>
+                      <span className="text-sm font-medium text-slate-800">
+                        {option.label}
+                      </span>
                     </label>
                   );
                 })}
               </div>
-              {useCaseError && <p className="mt-2 text-sm text-rose-600">{useCaseError}</p>}
+              {useCaseError && (
+                <p className="mt-2 text-sm text-rose-600">{useCaseError}</p>
+              )}
             </fieldset>
 
             <div>
@@ -525,7 +602,9 @@ export default function SpendForm() {
                 onChange={(e) =>
                   updateState(
                     "estimatedTotalMonthlySpend",
-                    e.target.value === "" ? undefined : Math.max(0, Number(e.target.value))
+                    e.target.value === ""
+                      ? undefined
+                      : Math.max(0, Number(e.target.value)),
                   )
                 }
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base text-slate-900 outline-none ring-cyan-500 transition focus:border-cyan-400 focus:ring-2"
@@ -573,7 +652,9 @@ export default function SpendForm() {
                     className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5"
                   >
                     <div className="mb-4 flex items-center justify-between gap-4">
-                      <h3 className="text-sm font-semibold text-slate-800">Tool {index + 1}</h3>
+                      <h3 className="text-sm font-semibold text-slate-800">
+                        Tool {index + 1}
+                      </h3>
                       {formState.tools.length > 1 && (
                         <button
                           type="button"
@@ -596,7 +677,9 @@ export default function SpendForm() {
                         <select
                           id={`type-${tool.id}`}
                           value={tool.type}
-                          onChange={(e) => changeToolType(tool.id, e.target.value as ToolType)}
+                          onChange={(e) =>
+                            changeToolType(tool.id, e.target.value as ToolType)
+                          }
                           className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-cyan-500 transition focus:border-cyan-400 focus:ring-2"
                         >
                           <option value="subscription">Subscription</option>
@@ -609,7 +692,9 @@ export default function SpendForm() {
                           htmlFor={`name-${tool.id}`}
                           className="block text-sm font-medium text-slate-900"
                         >
-                          {tool.type === "subscription" ? "Tool name" : "Provider name"}
+                          {tool.type === "subscription"
+                            ? "Tool name"
+                            : "Provider name"}
                         </label>
                         <select
                           id={`name-${tool.id}`}
@@ -621,7 +706,10 @@ export default function SpendForm() {
                               updateTool(tool.id, {
                                 toolName: value,
                                 plan: "",
-                                seats: tool.seats && tool.seats >= 1 ? tool.seats : 1,
+                                seats:
+                                  tool.seats && tool.seats >= 1
+                                    ? tool.seats
+                                    : 1,
                               });
                               return;
                             }
@@ -631,13 +719,14 @@ export default function SpendForm() {
                           className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-cyan-500 transition focus:border-cyan-400 focus:ring-2"
                         >
                           <option value="">Select</option>
-                          {(tool.type === "subscription" ? subscriptionTools : apiProviders).map(
-                            (name) => (
-                              <option key={name} value={name}>
-                                {name}
-                              </option>
-                            )
-                          )}
+                          {(tool.type === "subscription"
+                            ? subscriptionTools
+                            : apiProviders
+                          ).map((name) => (
+                            <option key={name} value={name}>
+                              {name}
+                            </option>
+                          ))}
                         </select>
                       </div>
 
@@ -653,7 +742,9 @@ export default function SpendForm() {
                             <select
                               id={`plan-${tool.id}`}
                               value={tool.plan ?? ""}
-                              onChange={(e) => updateTool(tool.id, { plan: e.target.value })}
+                              onChange={(e) =>
+                                updateTool(tool.id, { plan: e.target.value })
+                              }
                               className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-cyan-500 transition focus:border-cyan-400 focus:ring-2"
                               disabled={!tool.toolName}
                             >
@@ -681,7 +772,9 @@ export default function SpendForm() {
                               onChange={(e) =>
                                 updateTool(tool.id, {
                                   seats:
-                                    e.target.value === "" ? undefined : Number(e.target.value),
+                                    e.target.value === ""
+                                      ? undefined
+                                      : Number(e.target.value),
                                 })
                               }
                               className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-cyan-500 transition focus:border-cyan-400 focus:ring-2"
@@ -698,13 +791,19 @@ export default function SpendForm() {
                           htmlFor={`monthly-${tool.id}`}
                           className="block text-sm font-medium text-slate-900"
                         >
-                          {tool.type === "subscription" ? "Monthly spend" : "Monthly API spend"}
+                          {tool.type === "subscription"
+                            ? "Monthly spend"
+                            : "Monthly API spend"}
                         </label>
                         <input
                           id={`monthly-${tool.id}`}
                           type="number"
                           min={0}
-                          value={Number.isFinite(tool.monthlySpend) ? tool.monthlySpend : ""}
+                          value={
+                            Number.isFinite(tool.monthlySpend)
+                              ? tool.monthlySpend
+                              : ""
+                          }
                           onChange={(e) =>
                             updateTool(tool.id, {
                               monthlySpend:
@@ -735,7 +834,9 @@ export default function SpendForm() {
                               id={`usage-${tool.id}`}
                               value={tool.apiUsage ?? ""}
                               onChange={(e) =>
-                                updateTool(tool.id, { apiUsage: e.target.value as ApiUsage })
+                                updateTool(tool.id, {
+                                  apiUsage: e.target.value as ApiUsage,
+                                })
                               }
                               className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-cyan-500 transition focus:border-cyan-400 focus:ring-2"
                             >
@@ -758,7 +859,11 @@ export default function SpendForm() {
                             <select
                               id={`model-${tool.id}`}
                               value={tool.mainModel ?? ""}
-                              onChange={(e) => updateTool(tool.id, { mainModel: e.target.value })}
+                              onChange={(e) =>
+                                updateTool(tool.id, {
+                                  mainModel: e.target.value,
+                                })
+                              }
                               className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-cyan-500 transition focus:border-cyan-400 focus:ring-2"
                             >
                               <option value="">Select model</option>
@@ -825,8 +930,12 @@ export default function SpendForm() {
 
             <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Team size</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">{formState.teamSize}</p>
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Team size
+                </p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  {formState.teamSize}
+                </p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-500">
@@ -855,7 +964,9 @@ export default function SpendForm() {
                 </p>
               </div>
               <div className="sm:col-span-2">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Tools added</p>
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Tools added
+                </p>
                 <p className="mt-1 text-lg font-semibold text-slate-900">
                   {formState.tools.length}
                 </p>
@@ -875,30 +986,44 @@ export default function SpendForm() {
                   {tool.type === "subscription" ? (
                     <div className="mt-3 grid gap-3 text-sm text-slate-700 sm:grid-cols-3">
                       <p>
-                        <span className="font-medium text-slate-900">Plan:</span>{" "}
+                        <span className="font-medium text-slate-900">
+                          Plan:
+                        </span>{" "}
                         {tool.plan || "Not set"}
                       </p>
                       <p>
-                        <span className="font-medium text-slate-900">Seats:</span>{" "}
+                        <span className="font-medium text-slate-900">
+                          Seats:
+                        </span>{" "}
                         {tool.seats ?? "Not set"}
                       </p>
                       <p>
-                        <span className="font-medium text-slate-900">Monthly spend:</span>{" "}
+                        <span className="font-medium text-slate-900">
+                          Monthly spend:
+                        </span>{" "}
                         {formatCurrency(tool.monthlySpend)}
                       </p>
                     </div>
                   ) : (
                     <div className="mt-3 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
                       <p>
-                        <span className="font-medium text-slate-900">Primary API usage:</span>{" "}
-                        {tool.apiUsage ? apiUsageLabels[tool.apiUsage] : "Not set"}
+                        <span className="font-medium text-slate-900">
+                          Primary API usage:
+                        </span>{" "}
+                        {tool.apiUsage
+                          ? apiUsageLabels[tool.apiUsage]
+                          : "Not set"}
                       </p>
                       <p>
-                        <span className="font-medium text-slate-900">Main model:</span>{" "}
+                        <span className="font-medium text-slate-900">
+                          Main model:
+                        </span>{" "}
                         {tool.mainModel || "Not set"}
                       </p>
                       <p className="sm:col-span-2">
-                        <span className="font-medium text-slate-900">Monthly API spend:</span>{" "}
+                        <span className="font-medium text-slate-900">
+                          Monthly API spend:
+                        </span>{" "}
                         {formatCurrency(tool.monthlySpend)}
                       </p>
                     </div>
@@ -915,12 +1040,16 @@ export default function SpendForm() {
               >
                 Back
               </button>
+              {submitError && (
+                <p className="mt-3 text-sm text-red-600">{submitError}</p>
+              )}
               <button
                 type="button"
-                onClick={generateAudit}
-                className="rounded-full bg-cyan-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700"
+                onClick={handleGenerateAudit}
+                disabled={isSubmitting}
+                className="rounded-full bg-cyan-600 px-6 py-3 text-sm font-semibold text-white  disabled:cursor-not-allowed disabled:opacity-60 transition hover:bg-cyan-700"
               >
-                Generate audit
+                {isSubmitting ? "Generating audit..." : "Generate audit"}
               </button>
             </div>
           </div>
@@ -934,8 +1063,12 @@ export default function SpendForm() {
 
         <dl className="mt-5 space-y-4">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <dt className="text-xs uppercase tracking-wide text-slate-500">Tools added</dt>
-            <dd className="mt-1 text-xl font-semibold text-slate-900">{formState.tools.length}</dd>
+            <dt className="text-xs uppercase tracking-wide text-slate-500">
+              Tools added
+            </dt>
+            <dd className="mt-1 text-xl font-semibold text-slate-900">
+              {formState.tools.length}
+            </dd>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -957,7 +1090,9 @@ export default function SpendForm() {
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <dt className="text-xs uppercase tracking-wide text-slate-500">Team size</dt>
+            <dt className="text-xs uppercase tracking-wide text-slate-500">
+              Team size
+            </dt>
             <dd className="mt-1 text-xl font-semibold text-slate-900">
               {formState.teamSize > 0 ? formState.teamSize : "-"}
             </dd>
