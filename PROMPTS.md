@@ -1,58 +1,140 @@
 # PROMPTS.md
 
-## Personalized Audit Summary
+## 1. Purpose
+
+The LLM is used only to rewrite already-calculated audit results into a short, user-facing summary. All pricing, savings, and recommendations are computed deterministically by the audit engine before any AI call is made.
+
+## 2. Provider and model
 
 Provider: Groq
-Model: `llama-3.3-70b-versatile`
-Purpose: Generate a short personalized summary after deterministic audit rules calculate savings.
+Model: llama-3.3-70b-versatile
 
-## System Prompt
-
-You are writing a concise user-facing AI spend audit summary for a founder, CTO, or engineering manager. The audit math has already been calculated by deterministic business rules. Your job is only to explain the result clearly in plain English. Write one paragraph only, between 80 and 120 words. Use a professional, calm, practical tone. Do not invent numbers, tools, discounts, company type, or recommendations. Do not guarantee savings. Do not mention internal fields, booleans, JSON, variable names, developer instructions, or implementation details. Never mention terms such as credexFit, primaryUseCase, savingsLevel, resultJson, monthlySavings, totalMonthlySavings, JSON, or boolean. Use phrases like "this audit" or "your AI stack", not "our audit". Mention discounted AI or cloud credits only when the provided context explicitly says it is appropriate.If total monthly savings are below $100, start the summary by saying the AI spend looks mostly efficient. Do not use strong phrases like “major savings,” “maximize savings,” or “significant opportunity.” Keep the tone honest and conservative.
-
-## User Prompt Shape
-
-The app sends a compact prompt in this structure:
+## 3. System prompt
 
 ```text
-Write one clean user-facing paragraph, 80-120 words.
+You are writing a concise user-facing AI spend audit summary for a founder, CTO, or engineering manager. The audit math has already been calculated by deterministic business rules. Your job is only to explain the result clearly in plain English. Write one paragraph only, between 80 and 120 words. Use a professional, practical tone. Do not invent numbers, tools, discounts, company type, or recommendations. Do not guarantee savings. Do not mention internal fields, JSON, variable names, or implementation details. Never mention terms such as credexFit, resultJson, savingsLevel, monthlySavings, totalMonthlySavings, primaryUseCase, or JSON. Use phrases like "this audit" or "your AI stack", not "our audit". Mention discounted AI or cloud credits only when the provided savings context explicitly says it is appropriate. If savings are low, be honest and say spend looks mostly efficient.
+```
 
-Be specific, practical, and concise.
+## 4. User prompt shape
 
-Mention total monthly savings, annual savings, the most important optimization area, and the next best action.
+The app sends sanitized data in this shape:
 
-Mention discounted AI or cloud credits only when the provided savings context says that is appropriate.
-
-Do not mention internal fields, booleans, JSON, developer instructions, or variable names.
-
-Do not say "our AI spend audit". Do not say "B2B SaaS" unless the input explicitly says that.
-
-Use only the facts in this JSON:
-
+```json
 {
-  "teamSize": 6,
-  "teamContext": "coding-focused team",
-  "totalMonthlySpend": 990,
-  "totalMonthlySavings": 170,
-  "totalAnnualSavings": 2040,
-  "savingsRatePercent": 17,
-  "savingsContext": "High-savings opportunity detected. It is appropriate to mention discounted AI/cloud credits.",
-  "nextBestAction": "Explore discounted AI infrastructure credits and review high-spend tools first.",
+  "teamSize": 0,
+  "useCaseLabel": "",
+  "totalMonthlySpend": 0,
+  "totalMonthlySavings": 0,
+  "totalAnnualSavings": 0,
+  "savingsRatePercent": 0,
+  "savingsContext": "",
+  "nextBestAction": "",
   "topRecommendations": [
     {
-      "toolName": "OpenAI API",
-      "action": "Explore discounted AI credits and procurement optimization",
-      "estimatedMonthlySavings": 130,
-      "reason": "High API spend detected. Procurement review, discounted credits, caching, and model routing may materially reduce infrastructure cost."
+      "toolName": "",
+      "action": "",
+      "estimatedMonthlySavings": 0,
+      "reason": ""
     }
   ]
 }
 ```
 
-## Fallback Behavior
+## 5. Example sanitized prompt payload
 
-If Groq fails, the app uses a deterministic fallback summary and stores `summarySource = "fallback"`.
+```json
+{
+  "teamSize": 8,
+  "useCaseLabel": "product engineering",
+  "totalMonthlySpend": 1240,
+  "totalMonthlySavings": 210,
+  "totalAnnualSavings": 2520,
+  "savingsRatePercent": 17,
+  "savingsContext": "High-savings opportunity detected. It is appropriate to mention discounted AI/cloud credits.",
+  "nextBestAction": "Review high-spend API providers and compare plan tiers.",
+  "topRecommendations": [
+    {
+      "toolName": "OpenAI API",
+      "action": "Review plan and apply usage caps",
+      "estimatedMonthlySavings": 140,
+      "reason": "High API spend detected with potential tier optimization."
+    }
+  ]
+}
+```
 
-## What AI Does Not Do
+## 6. Forbidden terms guard
 
-AI does not calculate pricing, savings, recommendations, or Credex fit. Those are handled by the rule-based audit engine.
+The app checks LLM output for forbidden internal terms and falls back if any are detected.
+
+## 7. Fallback behavior
+
+The deterministic fallback summary is used when:
+
+- API key is missing
+- Groq request fails
+- Output is empty
+- Output contains forbidden internal terms
+
+## 8. Prompt versioning
+
+The prompt is versioned in code to make changes explicit and reviewable. When the prompt changes, the version is bumped and recorded with the audit result so summaries can be traced to the prompt used.
+
+## 9. JSON schema
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AuditSummaryPrompt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "teamSize",
+    "useCaseLabel",
+    "totalMonthlySpend",
+    "totalMonthlySavings",
+    "totalAnnualSavings",
+    "savingsRatePercent",
+    "savingsContext",
+    "nextBestAction",
+    "topRecommendations"
+  ],
+  "properties": {
+    "teamSize": { "type": "number" },
+    "useCaseLabel": { "type": "string" },
+    "totalMonthlySpend": { "type": "number" },
+    "totalMonthlySavings": { "type": "number" },
+    "totalAnnualSavings": { "type": "number" },
+    "savingsRatePercent": { "type": "number" },
+    "savingsContext": { "type": "string" },
+    "nextBestAction": { "type": "string" },
+    "topRecommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "toolName",
+          "action",
+          "estimatedMonthlySavings",
+          "reason"
+        ],
+        "properties": {
+          "toolName": { "type": "string" },
+          "action": { "type": "string" },
+          "estimatedMonthlySavings": { "type": "number" },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  }
+}
+```
+
+## 10. What AI does not do
+
+- No pricing math
+- No savings math
+- No recommendation logic
+- No database decisions
+- No lead scoring logic
