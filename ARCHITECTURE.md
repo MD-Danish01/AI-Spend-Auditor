@@ -1,110 +1,133 @@
 # ARCHITECTURE.md
 
-## Project Overview
+## 1. Project overview
 
-AI Spend Auditor is a web application that helps startup founders and engineering managers audit their monthly AI tool spend. Users enter the AI tools they use, their plan, number of seats, monthly spend, team size, and primary use case. The application then calculates potential monthly and annual savings, gives per-tool recommendations, generates a personalized AI summary, captures qualified leads, and creates a shareable public audit report URL.
+AI Spend Auditor helps startup founders, CTOs, engineering managers, and small teams audit monthly AI tool spend. Users enter team size, primary use case, AI subscriptions, API providers, plans, seats, and monthly spend. The app runs a rule-based audit engine to estimate monthly and annual savings, generates an AI summary using Groq, stores the audit in Neon Postgres, creates a public shareable audit URL, captures leads after value is shown, and sends a confirmation email using Resend.
 
-The goal of this project is to ship a useful MVP that Credex could plausibly use as a lead-generation tool for startups overspending on AI tools and cloud/AI infrastructure credits.
+## 2. Architecture style
 
----
+This project uses a modular monolith. The UI, API routes, audit engine, and data access live in one Next.js app, but are separated into clean modules.
 
-## Architecture Style
+Why modular monolith over microservices:
+- Faster MVP shipping
+- Simpler deployment
+- Easier debugging
+- Fewer moving parts
+- Still maintainable through clean modules
 
-This project uses a **modular monolith architecture**.
-
-I intentionally avoided microservices because this is a 7-day MVP where speed, simplicity, and reliability matter more than infrastructure complexity. A modular monolith lets me keep the product easy to develop, test, deploy, and debug while still separating the important parts of the system into clean modules.
-
-The application is split into separate logical areas:
-
-- Landing page and marketing UI
-- Spend input form
-- Audit engine
-- Audit result page
-- AI summary generation
-- Lead capture
-- Shareable public audit page
-- Database access layer
-- Email sending layer
-- Tests and documentation
-
-If this product scaled significantly, some parts could later be extracted into separate services or background jobs, but starting with microservices would slow down the MVP without giving immediate value.
-
----
-
-## Tech Stack
-
-### Frontend
-
-- **Next.js** for the full-stack React framework
-- **TypeScript** for type safety and fewer runtime bugs
-- **Tailwind CSS** for fast, responsive UI development
-- **LocalStorage** for persisting form state across page reloads
-
-### Backend
-
-- **Next.js API Routes / Server Actions** for backend logic
-- **Neon Postgres** for relational data storage
-- **Drizzle ORM** for type-safe database queries
-- **Resend** for transactional email
-- **LLM API** for personalized audit summary generation
-- **Fallback template summary** if the LLM API fails
-
-### Deployment
-
-- **Vercel** for frontend and backend deployment
-- **Neon** for serverless Postgres database
-- **GitHub Actions** for linting and tests on push
-
----
-
-## Why I Chose This Stack
-
-I chose **Next.js** because the assignment needs both frontend pages and backend API functionality. Next.js allows me to build the landing page, audit form, result pages, API routes, dynamic public URLs, and Open Graph metadata inside one project.
-
-I chose **TypeScript** because the audit engine depends on structured data such as tools, plans, pricing, seats, use cases, and savings calculations. TypeScript helps prevent mistakes in these calculations.
-
-I chose **Postgres through Neon** because the data is relational and structured. The app stores audits, leads, and public audit reports. A relational database makes it easier to keep audit records and lead records consistent.
-
-I chose **Vercel** because it gives fast deployment for Next.js applications and makes it easy to ship a working product quickly.
-
-I chose a **modular monolith** because this project needs to be shipped quickly, tested properly, and deployed reliably. Microservices would add unnecessary deployment, communication, and debugging complexity for this stage.
-
----
-
-## High-Level System Diagram
+## 3. High-level system diagram (Mermaid)
 
 ```mermaid
 flowchart TD
-    A[Cold Visitor] --> B[Landing Page]
-    B --> C[Spend Input Form]
-
-    C --> D[LocalStorage Persistence]
-    C --> E[Create Audit Request]
-
-    E --> F[Next.js API Route]
-    F --> G[Audit Engine]
-
-    G --> H[Pricing Data]
-    G --> I[Rule-Based Savings Logic]
-    G --> J[Audit Result Object]
-
-    J --> K[LLM Summary API]
-    K --> L[AI Summary]
-    K --> M[Fallback Summary if API Fails]
-
-    J --> N[Neon Postgres Database]
-    L --> N
-    M --> N
-
-    N --> O[Audit Results Page]
-    O --> P[Lead Capture Form]
-    P --> Q[Save Lead to Database]
-    Q --> R[Send Confirmation Email]
-
-    O --> S[Shareable Public Audit URL]
-    S --> T[Public Audit Page without Email or Company Details]
+    A[Landing page] --> B[Spend form]
+    B --> C[POST /api/audits]
+    C --> D[calculateAudit]
+    D --> E[Groq summary / fallback]
+    E --> F[Neon DB]
+    F --> G[/audit/[publicId]]
+    G --> H[Lead capture]
+    H --> I[POST /api/leads]
+    I --> J[Resend email]
 ```
-## plan and pricing data source
 
-For API-direct tools, the product asks for actual monthly spend instead of token-level usage. This is intentional because most founders and engineering managers know their monthly invoice amount, but not exact model-level token usage. Official token pricing is still cited in PRICING_DATA.md as reference data, but the audit engine uses user-provided monthly API spend for recommendations.
+## 4. Data flow from form submission to public report
+
+1. User submits the spend form with tools, plans, seats, usage type, and monthly spend.
+2. The client posts payload to `POST /api/audits`.
+3. The audit engine runs `calculateAudit`, applying deterministic pricing rules and savings logic.
+4. The server requests a summary from Groq. If Groq fails, a fallback summary template is used.
+5. The audit result and summary are stored in Neon Postgres via Drizzle.
+6. The user is redirected to `/audit/[publicId]`, which renders the public audit page.
+7. After value is shown, the lead capture form submits to `POST /api/leads`.
+8. The lead is stored and a confirmation email is sent with Resend.
+
+## 5. Why this stack was chosen
+
+- Next.js App Router provides UI, API routes, and SSR in one deployable unit.
+- TypeScript improves correctness for audit math and data contracts.
+- Tailwind CSS enables fast UI iteration and consistent styling.
+- Neon Postgres is a reliable, managed relational database for audits and leads.
+- Drizzle ORM keeps queries type-safe and schema-driven.
+- Groq SDK enables fast AI summaries without impacting audit math.
+- Resend provides straightforward transactional email delivery.
+- GitHub Actions runs tests and linting automatically.
+- Vercel provides fast, production-grade deployments for Next.js.
+
+## 6. Folder/module structure
+
+- `app/` App Router pages and API routes
+- `components/` UI components (forms, buttons, lead capture)
+- `lib/` shared services (AI summary, email, database clients)
+- `lib/audit-engine/` audit rules, pricing, and calculations
+- `db/` schema and Drizzle setup
+- `drizzle/` migrations and metadata
+- `tests/` audit engine tests
+
+## 7. Audit engine architecture
+
+The audit engine is rule-based and deterministic. It does not use AI for audit math.
+
+- Input: tools, plan, seats, monthly spend, and usage type
+- Rules: per-tool pricing rules and savings heuristics
+- Output: monthly savings, annual savings, and recommendations
+
+Because the engine is deterministic, it is testable with unit tests and produces stable results. AI is only used to summarize the results, not to compute them.
+
+## 8. API routes
+
+- `POST /api/audits` creates an audit, runs `calculateAudit`, generates summary, and persists results
+- `POST /api/leads` stores lead info and sends confirmation email
+- `GET /audit/[publicId]` renders a public report page
+
+## 9. Database design
+
+Neon Postgres stores normalized audit data and lead records. The design focuses on:
+
+- Audit metadata (inputs, totals, savings)
+- Summary text (AI or fallback)
+- Public share token (`publicId`)
+- Lead capture data tied to audits
+
+Public audit pages do not expose email, company name, or role.
+
+## 10. AI summary generation
+
+The server calls Groq to create a concise summary of the audit results. If Groq fails, a fallback summary is used to keep the UX consistent and reliable. The summary is saved alongside the audit for quick retrieval on public pages.
+
+## 11. Lead capture and email flow
+
+Lead capture is shown after the audit results are visible. Submissions:
+
+- Pass a honeypot field for basic spam protection
+- Create a lead record in Neon
+- Trigger a confirmation email via Resend
+
+## 12. Security and privacy
+
+- Public audit pages avoid exposing email, company name, or role
+- API inputs are validated on the server
+- Honeypot field helps reduce spam
+- Environment secrets are stored in Vercel and GitHub Actions
+
+## 13. Error handling and fallback behavior
+
+- Groq failures use a fallback summary
+- Database errors return safe error responses without leaking details
+- Form submissions validate inputs and show actionable errors
+- Audit math remains deterministic even if AI is unavailable
+
+## 14. What I would change for 10k audits/day
+
+- Move audit creation to a queue with background workers
+- Add read replicas or caching for public audit pages
+- Implement rate limiting and abuse detection
+- Precompute and store derived metrics for faster reads
+- Split summary generation into async jobs with retries
+
+## 15. Trade-offs
+
+- A modular monolith speeds delivery but limits independent scaling of components
+- Deterministic rules improve trust but require ongoing pricing updates
+- Storing summaries improves page speed but can become stale if logic changes
+- Public sharing improves virality but requires careful privacy controls
 
