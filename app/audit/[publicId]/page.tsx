@@ -2,9 +2,10 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
+import LeadCaptureForm from "@/components/LeadCaptureForm";
 import { db } from "@/lib/db";
 import { audits } from "@/db/schema";
-import CopyShareButton from "../../../components/copy-share-button";
+import CopyShareButton from "@/components/copy-share-button";
 import type {
   AuditResult,
   RecommendationSeverity,
@@ -392,6 +393,8 @@ export default async function PublicAuditPage({
             )}
           </div>
         </section>
+
+        <LeadCaptureForm publicId={publicId} credexFit={result.credexFit} />
       </div>
     </main>
   );
