@@ -79,10 +79,7 @@ export default async function PublicAuditPage({
   }
 
   const result = audit.resultJson as AuditResult;
-  const headersList = await headers();
-  const protocol = headersList.get("x-forwarded-proto") ?? "https";
-  const host = headersList.get("x-forwarded-host") ?? headersList.get("host") ?? "";
-  const publicUrl = host ? `${protocol}://${host}/audit/${publicId}` : `/audit/${publicId}`;
+  const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL}/audit/${publicId}`;
   const sortedRecommendations = [...(result.recommendations ?? [])].sort(
     (left, right) => right.monthlySavings - left.monthlySavings
   );
@@ -123,7 +120,7 @@ export default async function PublicAuditPage({
       </header>
 
       <div className="mx-auto max-w-7xl px-6 py-8 lg:px-8 lg:py-12">
-        <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.18)] sm:p-8 lg:p-10">
+        <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.18)] sm:p-8 lg:p-10">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-700">

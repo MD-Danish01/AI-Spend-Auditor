@@ -33,6 +33,7 @@ export default function LeadCaptureForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setFormState((prev) => ({ ...prev, [key]: value }));
@@ -62,6 +63,7 @@ export default function LeadCaptureForm({
     if (validationError) {
       setError(validationError);
       setSuccess(false);
+      setSuccessMessage("");
       return;
     }
 
@@ -69,6 +71,7 @@ export default function LeadCaptureForm({
       setIsSubmitting(true);
       setError("");
       setSuccess(false);
+      setSuccessMessage("");
 
       const response = await fetch("/api/leads", {
         method: "POST",
@@ -92,6 +95,11 @@ export default function LeadCaptureForm({
       }
 
       setSuccess(true);
+      setSuccessMessage(
+        data.emailSent === false
+          ? "Thanks — your report was saved. The confirmation email could not be sent, but your public report link still works."
+          : "Thanks — your report has been saved and emailed to you."
+      );
       setFormState(getInitialFormState());
     } catch (submitError) {
       setError(
@@ -100,6 +108,7 @@ export default function LeadCaptureForm({
           : "Could not save your report. Please try again."
       );
       setSuccess(false);
+      setSuccessMessage("");
     } finally {
       setIsSubmitting(false);
     }
@@ -212,7 +221,7 @@ export default function LeadCaptureForm({
 
             {error && <p className="text-sm text-rose-600">{error}</p>}
             {success && (
-              <p className="text-sm text-emerald-600">Thanks — your report has been saved.</p>
+              <p className="text-sm text-emerald-600">{successMessage}</p>
             )}
 
             <div className="pt-2">
