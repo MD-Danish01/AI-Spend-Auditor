@@ -2,9 +2,9 @@
 
 ## Personalized Audit Summary
 
-Provider: Groq  
-Model: `llama-3.1-8b-instant`  
-Purpose: Generate a short public-facing summary after deterministic audit rules calculate savings.
+Provider: Groq
+Model: `llama-3.3-70b-versatile`
+Purpose: Generate a short personalized summary after deterministic audit rules calculate savings.
 
 ## System Prompt
 
