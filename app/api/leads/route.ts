@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { audits, leads } from "@/db/schema";
+import { sendAuditConfirmationEmail } from "@/lib/email";
+import type { AuditResult } from "@/lib/audit-engine/types";
 
 type LeadPayload = {
   publicId?: string;
@@ -74,7 +76,27 @@ export async function POST(request: Request) {
       teamSize: parsedTeamSize,
     });
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    const result = audit.resultJson as AuditResult;
+    const emailResult = await sendAuditConfirmationEmail({
+      to: email,
+      publicId,
+      totalMonthlySavings: result.totalMonthlySavings,
+      totalAnnualSavings: result.totalAnnualSavings,
+      credexFit: result.credexFit,
+    });
+
+    if (!emailResult.success) {
+      return NextResponse.json(
+        {
+          success: true,
+          emailSent: false,
+          warning: "Lead saved, but confirmation email could not be sent.",
+        },
+        { status: 200 }
+      );
+    }
+
+    return NextResponse.json({ success: true, emailSent: true }, { status: 200 });
   } catch (error) {
     console.error("Failed to save lead:", error);
 

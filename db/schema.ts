@@ -8,9 +8,15 @@ import {
   text,
   timestamp,
   varchar,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 
 import type { AuditInput, AuditResult } from "@/lib/audit-engine/types";
+
+export const summarySourceEnum = pgEnum("summary_source", [
+  "fallback",
+  "llm",
+]);
 
 export const audits = pgTable(
   "audits",
@@ -25,7 +31,7 @@ export const audits = pgTable(
 
     summary: text("summary"),
 
-    summarySource: varchar("summary_source", { length: 32 })
+    summarySource: summarySourceEnum("summary_source")
       .notNull()
       .default("fallback"),
 

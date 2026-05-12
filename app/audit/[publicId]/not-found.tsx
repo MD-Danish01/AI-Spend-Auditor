@@ -4,7 +4,7 @@ export default function AuditNotFound() {
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-6 py-16 text-center">
-        <div className="w-full rounded-[32px] border border-slate-200 bg-white px-8 py-12 shadow-sm">
+        <div className="w-full rounded-4xl border border-slate-200 bg-white px-8 py-12 shadow-sm">
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-cyan-700">
             AI Spend Auditor
           </p>

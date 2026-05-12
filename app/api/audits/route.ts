@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
 import { calculateAudit } from "@/lib/audit-engine/calculateAudit";
+import { generateAuditSummary } from "@/lib/ai-summary";
 import { db } from "@/lib/db";
 import { audits } from "@/db/schema";
-import type { AuditInput, AuditResult } from "@/lib/audit-engine/types";
+import type { AuditInput } from "@/lib/audit-engine/types";
 
 function createPublicId() {
   return crypto.randomUUID().replaceAll("-", "").slice(0, 12);
-}
-
-function createFallbackSummary(result: AuditResult) {
-  if (result.credexFit) {
-    return `Your AI stack shows a meaningful savings opportunity. The audit found potential savings of $${result.totalMonthlySavings}/month, or $${result.totalAnnualSavings}/year. The biggest opportunities are in the recommendations below. ${result.nextBestAction}`;
-  }
-
-  return `Your AI spend looks mostly efficient, with estimated savings of $${result.totalMonthlySavings}/month. The recommendations below can still help you monitor usage, reduce waste, and keep your AI stack aligned with your team size and use case.`;
 }
 
 function isValidAuditInput(data: unknown): data is AuditInput {
@@ -48,7 +41,7 @@ export async function POST(request: Request) {
     }
 
     const auditResult = calculateAudit(body);
-    const summary = createFallbackSummary(auditResult);
+    const summaryResult = await generateAuditSummary(body, auditResult);
     const publicId = createPublicId();
 
     const inserted = await db
@@ -57,8 +50,8 @@ export async function POST(request: Request) {
         publicId,
         inputJson: body,
         resultJson: auditResult,
-        summary,
-        summarySource: "fallback",
+        summary: summaryResult.summary,
+        summarySource: summaryResult.source,
         totalMonthlySpend: auditResult.totalMonthlySpend,
         totalMonthlySavings: auditResult.totalMonthlySavings,
         totalAnnualSavings: auditResult.totalAnnualSavings,
