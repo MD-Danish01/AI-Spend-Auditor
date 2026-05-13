@@ -12,7 +12,7 @@ The project focuses on a practical product constraint: AI is used only to explai
 
 Demo video:
 
-- [`public/Recording-demo.mp4`](public/Recording-demo.mp4)
+- [`https://jumpshare.com/share/xM3SVsQjrEVTcPWHgrHf`](https://jumpshare.com/share/xM3SVsQjrEVTcPWHgrHf)
 
 Screenshots:
 
