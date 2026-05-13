@@ -6,7 +6,7 @@ The project focuses on a practical product constraint: AI is used only to explai
 
 ## Live Demo
 
-- Deployed app: [https://your-deployed-url-here](https://your-deployed-url-here)
+- Deployed app: [Live demo: https://audit.danishdev.me/](https://audit.danishdev.me/)
 
 ## Screenshots / Demo
 
